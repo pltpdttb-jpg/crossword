@@ -13,22 +13,23 @@
             background-attachment: fixed;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation; /* ป้องกันการ zoom เมื่อแตะรัวๆ บนมือถือ */
         }
         
         .grid-cell {
             transition: all 0.2s ease;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
         
         .grid-cell:active {
-            transform: scale(0.95);
+            transform: scale(0.92);
         }
 
         .found-cell {
             background: linear-gradient(135deg, #00b09b, #96c93d) !important;
             border-color: #fff !important;
             transform: scale(1.05);
-            box-shadow: 0 0 20px rgba(0, 176, 155, 0.6);
+            box-shadow: 0 0 15px rgba(0, 176, 155, 0.5);
             z-index: 10;
         }
 
@@ -39,13 +40,14 @@
         /* Animation สั่นเวลาตอบผิด */
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px) rotate(-3deg); }
-            50% { transform: translateX(5px) rotate(3deg); }
-            75% { transform: translateX(-5px) rotate(-3deg); }
+            25% { transform: translateX(-3px) rotate(-2deg); }
+            50% { transform: translateX(3px) rotate(2deg); }
+            75% { transform: translateX(-3px) rotate(-2deg); }
         }
         .wrong-shake {
             animation: shake 0.4s ease-in-out;
             background: linear-gradient(135deg, #FF416C, #FF4B2B) !important; 
+            border-color: #FF416C !important;
         }
         
         .wrong-shake .coord-text, .wrong-shake .char-text {
@@ -54,7 +56,7 @@
 
         /* Animation เด้งเวลาเปิดด่านใหม่ */
         @keyframes popIn {
-            0% { opacity: 0; transform: scale(0.9); }
+            0% { opacity: 0; transform: scale(0.95); }
             70% { transform: scale(1.02); }
             100% { opacity: 1; transform: scale(1); }
         }
@@ -71,69 +73,84 @@
             pointer-events: none;
             z-index: 9999;
         }
+
+        /* คลาสพิเศษบังคับให้ตารางไม่ล้นจอแนวตั้งบนมือถือ */
+        .responsive-grid-wrapper {
+            width: 100%;
+            max-width: min(100%, 55vh); 
+        }
+        @media (min-width: 768px) {
+            .responsive-grid-wrapper {
+                max-width: min(100%, 65vh);
+            }
+        }
     </style>
 </head>
-<body class="min-h-screen flex flex-col items-center justify-center p-4 text-gray-800">
+<!-- เปลี่ยนจาก min-h-screen เป็น h-[100dvh] เพื่อแก้ปัญหาแถบเบราว์เซอร์บนมือถือ และใส่ overflow-hidden ไม่ให้เลื่อนจอไปมา -->
+<body class="h-[100dvh] w-full overflow-hidden flex flex-col items-center justify-center p-2 sm:p-4 text-gray-800">
 
     <canvas id="confetti-canvas"></canvas>
 
-    <!-- Main Game Container (ขยายขนาดเป็น max-w-2xl สำหรับจอโปรเจคเตอร์) -->
-    <div class="w-full max-w-2xl bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl overflow-hidden pop-in flex flex-col" id="game-container">
+    <!-- Main Game Container -->
+    <div class="w-full max-w-lg md:max-w-2xl max-h-full bg-white/95 backdrop-blur-md rounded-2xl md:rounded-3xl shadow-2xl overflow-y-auto flex flex-col pop-in" id="game-container">
         
         <!-- Header -->
-        <div class="bg-gradient-to-r from-purple-600 to-pink-500 p-6 md:p-8 text-center text-white relative">
-            <h1 class="text-3xl md:text-5xl font-bold tracking-wide mb-3 drop-shadow-md" id="game-title">ถอดรหัสลับคำศัพท์!</h1>
+        <div class="bg-gradient-to-r from-purple-600 to-pink-500 p-4 md:p-8 text-center text-white relative shrink-0">
+            <h1 class="text-2xl sm:text-3xl md:text-5xl font-bold tracking-wide mb-2 md:mb-3 drop-shadow-md" id="game-title">ถอดรหัสลับคำศัพท์!</h1>
             
-            <div class="inline-block bg-white/30 px-5 py-2 rounded-full text-sm md:text-base font-semibold backdrop-blur-sm mb-6 shadow-sm">
+            <div class="inline-block bg-white/30 px-3 py-1 md:px-5 md:py-2 rounded-full text-xs sm:text-sm md:text-base font-semibold backdrop-blur-sm mb-3 md:mb-6 shadow-sm">
                 ด่านที่ <span id="level-indicator">1</span> / 5
             </div>
             
-            <!-- ส่วนแสดงคำใบ้ (ปรับให้โดดเด่น ซ่อนคำตอบ) -->
-            <div class="bg-white rounded-2xl p-5 md:p-6 shadow-xl transform hover:scale-[1.02] transition-transform">
-                <div class="flex items-center justify-center space-x-2 mb-2">
-                    <span class="text-xl md:text-2xl">💡</span>
-                    <span class="text-base md:text-lg font-bold text-pink-500 tracking-wide">คำใบ้ปริศนา</span>
+            <!-- ส่วนแสดงคำใบ้ -->
+            <div class="bg-white rounded-xl md:rounded-2xl p-3 sm:p-4 md:p-6 shadow-xl transform hover:scale-[1.02] transition-transform mx-2 md:mx-0">
+                <div class="flex items-center justify-center space-x-1 md:space-x-2 mb-1 md:mb-2">
+                    <span class="text-lg md:text-2xl">💡</span>
+                    <span class="text-sm md:text-lg font-bold text-pink-500 tracking-wide">คำใบ้ปริศนา</span>
                 </div>
-                <p class="text-xl md:text-3xl font-extrabold text-purple-800 leading-tight" id="hint-text">
+                <p class="text-lg sm:text-xl md:text-3xl font-extrabold text-purple-800 leading-snug md:leading-tight" id="hint-text">
                     สิ่งที่ได้จากการเรียนและสั่งสม
                 </p>
             </div>
         </div>
 
         <!-- Grid Area -->
-        <div class="p-6 md:p-8 flex-grow flex flex-col items-center justify-center bg-gray-50/50">
-            <div id="grid-container" class="grid grid-cols-8 gap-1 md:gap-1.5 w-full aspect-square mb-2">
-                <!-- Cells will be generated here by JS -->
+        <div class="p-3 sm:p-4 md:p-8 flex-grow flex flex-col items-center justify-center bg-gray-50/50 min-h-0">
+            <!-- ตู้คอนเทนเนอร์สำหรับควบคุมขนาดตารางให้พอดีจอ -->
+            <div class="responsive-grid-wrapper mx-auto aspect-square flex items-center justify-center mb-2">
+                <div id="grid-container" class="grid grid-cols-8 gap-0.5 sm:gap-1 md:gap-1.5 w-full h-full">
+                    <!-- Cells will be generated here by JS -->
+                </div>
             </div>
             
-            <p class="text-center text-gray-400 mt-4 font-medium text-sm md:text-base">
+            <p class="text-center text-gray-400 mt-2 md:mt-4 font-medium text-xs sm:text-sm md:text-base shrink-0">
                 * ผู้เล่นบอกพิกัด เช่น <span class="font-bold text-pink-500">"A1"</span> หรือ <span class="font-bold text-purple-500">"H8"</span> ให้วิทยากรกด
             </p>
         </div>
     </div>
 
     <!-- Modal Level Complete -->
-    <div id="win-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center hidden z-50">
-        <div class="bg-white rounded-3xl p-8 md:p-10 max-w-md w-11/12 text-center transform scale-95 transition-transform duration-300 shadow-2xl" id="modal-content">
-            <div class="text-7xl mb-4">🎉</div>
-            <h2 class="text-3xl md:text-4xl font-extrabold text-green-500 mb-2">ถูกต้อง!</h2>
-            <p class="text-gray-500 mb-4 font-medium text-lg">คำตอบของด่านนี้คือคำว่า</p>
-            <div class="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-500 mb-8 py-2" id="win-message">
+    <div id="win-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-white rounded-2xl md:rounded-3xl p-6 md:p-10 max-w-md w-full text-center transform scale-95 transition-transform duration-300 shadow-2xl" id="modal-content">
+            <div class="text-5xl md:text-7xl mb-2 md:mb-4">🎉</div>
+            <h2 class="text-2xl md:text-4xl font-extrabold text-green-500 mb-2">ถูกต้อง!</h2>
+            <p class="text-gray-500 mb-2 md:mb-4 font-medium text-sm md:text-lg">คำตอบของด่านนี้คือคำว่า</p>
+            <div class="text-3xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-500 mb-6 md:mb-8 py-2" id="win-message">
                 ความรู้
             </div>
-            <button onclick="nextLevel()" class="w-full bg-gradient-to-r from-green-400 to-blue-500 text-white font-bold text-xl py-4 px-6 rounded-2xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all">
+            <button onclick="nextLevel()" class="w-full bg-gradient-to-r from-green-400 to-blue-500 text-white font-bold text-lg md:text-xl py-3 px-4 md:py-4 md:px-6 rounded-xl md:rounded-2xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all">
                 ลุยด่านต่อไป 🚀
             </button>
         </div>
     </div>
 
     <!-- Modal Game Clear -->
-    <div id="end-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center hidden z-50">
-        <div class="bg-white rounded-3xl p-10 max-w-md w-11/12 text-center shadow-2xl">
-            <div class="text-8xl mb-6">🏆</div>
-            <h2 class="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-600 mb-4">สุดยอดมาก!</h2>
-            <p class="text-gray-600 mb-8 text-lg font-medium">พวกคุณช่วยกันถอดรหัสได้ครบทุกด่านแล้ว<br>พร้อมเริ่มการอบรมกันหรือยัง!</p>
-            <button onclick="location.reload()" class="bg-gray-100 text-gray-800 font-bold text-xl py-4 px-8 rounded-2xl hover:bg-gray-200 transition-colors shadow-sm">
+    <div id="end-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-white rounded-2xl md:rounded-3xl p-8 md:p-10 max-w-md w-full text-center shadow-2xl">
+            <div class="text-6xl md:text-8xl mb-4 md:mb-6">🏆</div>
+            <h2 class="text-3xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-600 mb-3 md:mb-4">สุดยอดมาก!</h2>
+            <p class="text-gray-600 mb-6 md:mb-8 text-sm md:text-lg font-medium">พวกคุณช่วยกันถอดรหัสได้ครบทุกด่านแล้ว<br>พร้อมเริ่มการอบรมกันหรือยัง!</p>
+            <button onclick="location.reload()" class="bg-gray-100 text-gray-800 font-bold text-lg md:text-xl py-3 px-6 md:py-4 md:px-8 rounded-xl md:rounded-2xl hover:bg-gray-200 transition-colors shadow-sm w-full">
                 เล่นอีกครั้ง 🔄
             </button>
         </div>
@@ -165,7 +182,6 @@
             
             // สร้างตารางเปล่า 8x8
             let grid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(null));
-            let targetCoords = [];
 
             // สุ่มทิศทาง (0: ขวา, 1: ลง, 2: ทแยงลงขวา, 3: ทแยงขึ้นขวา, 4: ซ้ายย้อนกลับ, 5: ขึ้นย้อนกลับ)
             let placed = false;
@@ -213,28 +229,26 @@
                 }
             }
 
-            // Render ลง HTML พร้อมพิกัด A1, B2...
+            // Render ลง HTML พร้อมพิกัด
             for (let y = 0; y < gridSize; y++) {
                 for (let x = 0; x < gridSize; x++) {
                     const cellData = grid[y][x];
                     const cell = document.createElement('div');
                     
-                    // ปรับแต่ง UI ช่องให้ดูสวยงามและกดง่าย
-                    cell.className = 'grid-cell bg-white rounded-xl md:rounded-2xl flex items-center justify-center relative cursor-pointer border-2 border-gray-100/80 shadow-sm aspect-square hover:bg-gray-50';
+                    // Responsive Cell Styling
+                    cell.className = 'grid-cell bg-white rounded-md sm:rounded-lg md:rounded-xl flex items-center justify-center relative cursor-pointer border sm:border-2 border-gray-100/80 hover:bg-gray-50';
                     
-                    // รหัสคอลัมน์ A, B, C...
                     const colLetter = String.fromCharCode(65 + x); 
-                    // รหัสแถว 1, 2, 3...
                     const rowNum = y + 1;
                     
-                    // 1. สร้างป้ายพิกัดมุมซ้ายบน (A1, B2)
+                    // พิกัดปรับให้เล็กลงบนมือถือ
                     const coordSpan = document.createElement('span');
-                    coordSpan.className = 'coord-text absolute top-1 left-1.5 md:top-2 md:left-2 text-[11px] md:text-sm font-medium text-gray-400 opacity-80 pointer-events-none transition-colors';
+                    coordSpan.className = 'coord-text absolute top-[2px] left-[4px] sm:top-1 sm:left-1.5 md:top-2 md:left-2 text-[9px] sm:text-[10px] md:text-sm font-medium text-gray-400 opacity-80 pointer-events-none transition-colors leading-none';
                     coordSpan.innerText = `${colLetter}${rowNum}`;
 
-                    // 2. สร้างตัวอักษรไทยตรงกลาง
+                    // ตัวอักษรปรับให้ยืดหยุ่นพอดีช่อง
                     const charSpan = document.createElement('span');
-                    charSpan.className = 'char-text text-3xl md:text-5xl font-normal text-gray-800 pointer-events-none transition-colors mt-2 md:mt-3'; // เว้นที่ให้พิกัด
+                    charSpan.className = 'char-text text-xl sm:text-2xl md:text-4xl font-normal text-gray-800 pointer-events-none transition-colors mt-2 sm:mt-2 md:mt-3 leading-none';
                     charSpan.innerText = cellData.char;
 
                     cell.appendChild(coordSpan);
@@ -243,7 +257,6 @@
                     cell.dataset.isTarget = cellData.isTarget;
                     cell.dataset.clicked = "false";
                     
-                    // คลิกที่ช่องเพื่อเช็คคำตอบ
                     cell.onclick = () => handleCellClick(cell);
                     container.appendChild(cell);
                 }
@@ -255,7 +268,6 @@
             if (cell.dataset.clicked === "true") return;
 
             if (cell.dataset.isTarget === "true") {
-                // กดถูก
                 cell.classList.add('found-cell');
                 cell.classList.remove('bg-white', 'hover:bg-gray-50');
                 cell.dataset.clicked = "true";
@@ -265,7 +277,6 @@
                     setTimeout(levelComplete, 400);
                 }
             } else {
-                // กดผิด
                 cell.classList.add('wrong-shake');
                 setTimeout(() => {
                     cell.classList.remove('wrong-shake');
@@ -280,14 +291,11 @@
             }
             const levelData = levels[index];
             document.getElementById('level-indicator').innerText = index + 1;
-            
-            // แสดงเฉพาะคำใบ้ ไม่บอกคำตอบ
             document.getElementById('hint-text').innerText = levelData.hint;
             
-            // Animation รีเฟรชหน้าจอ
             const container = document.getElementById('game-container');
             container.classList.remove('pop-in');
-            void container.offsetWidth; // trigger reflow
+            void container.offsetWidth; 
             container.classList.add('pop-in');
 
             generateGrid(levelData);
@@ -298,7 +306,6 @@
             const modal = document.getElementById('win-modal');
             const content = document.getElementById('modal-content');
             
-            // เฉลยคำตอบใน Modal
             document.getElementById('win-message').innerText = `"${levels[currentLevelIndex].word}"`;
             
             modal.classList.remove('hidden');
@@ -323,7 +330,7 @@
         }
 
         function gameClear() {
-            fireConfetti(true); // พลุชุดใหญ่
+            fireConfetti(true); 
             document.getElementById('end-modal').classList.remove('hidden');
         }
 
@@ -337,7 +344,10 @@
         const colors = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#FF8ED4', '#556270'];
 
         function fireConfetti(isGrand = false) {
-            const count = isGrand ? 250 : 100;
+            // ปรับจำนวนพลุตามขนาดจอ (มือถือพลุน้อยลงนิดหน่อยเพื่อความลื่นไหล)
+            const isMobile = window.innerWidth < 768;
+            const count = isGrand ? (isMobile ? 150 : 250) : (isMobile ? 60 : 100);
+            
             for (let i = 0; i < count; i++) {
                 particles.push({
                     x: canvas.width / 2,
@@ -365,7 +375,7 @@
                 p.tiltAngle += p.tiltAngleInc;
                 p.y += (Math.cos(p.tiltAngle) + 1 + p.r / 2) / 2;
                 p.x += Math.sin(p.tiltAngle) * 2;
-                p.dy += 0.5; // gravity
+                p.dy += 0.5; 
                 p.x += p.dx;
                 p.y += p.dy;
 
@@ -398,6 +408,5 @@
     </script>
 </body>
 </html>
-
 
 
